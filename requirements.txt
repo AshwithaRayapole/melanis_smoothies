@@ -1,0 +1,60 @@
+app:
+  title: "Customize Your Smoothie :cup_with_straw:"
+  description: |
+    Choose the fruits you want in your custom smoothie!
+  inputs:
+    - type: text_input
+      label: "Name on Smoothie:"
+      placeholder: "Enter your name"
+      output: name_on_order
+    - type: multiselect
+      label: "Choose up to four ingredients:"
+      options: 
+        - query: "SELECT FRUIT_NAME FROM smoothies.public.fruit_options"
+          column_name: FRUIT_NAME
+      max_selections: 5
+      output: ingredients_list
+    - type: button
+      label: "Submit Order"
+      output: submit_button
+  database_interaction:
+    session: get_active_session()
+    fetch_fruit_options: 
+      query: "SELECT FRUIT_NAME FROM smoothies.public.fruit_options"
+      output: my_dataframe
+    insert_order:
+      query_template: |
+        INSERT INTO smoothies.public.orders(ingredients, name_on_order)
+        VALUES ('{ingredients}', '{name_on_order}')
+      output: my_insert_stmt
+  process_flow:
+    - description: |
+        When the user selects the ingredients, display the selected fruits as a string.
+        If the user clicks "Submit Order", an insert statement will be executed in Snowflake.
+    steps:
+      - condition: ingredients_list is not empty
+        actions:
+          - display: ingredients_string
+          - generate: my_insert_stmt
+      - condition: submit_button is clicked
+        actions:
+          - execute_sql: my_insert_stmt
+          - display: success_message
+          - message: "Your Smoothie is ordered! {name_on_order}"
+            icon: "✅"
+  outputs:
+    - type: dataframe
+      data_source: my_dataframe
+      display_options: 
+        use_container_width: true
+    - type: text
+      label: "The Name on your Smoothie will be:"
+      value: "{name_on_order}"
+    - type: text
+      label: "Selected Ingredients:"
+      value: "{ingredients_string}"
+    - type: text
+      label: "Order Confirmation"
+      value: "Your Smoothie is ordered! {name_on_order}"
+      condition: success
+      icon: "✅"
